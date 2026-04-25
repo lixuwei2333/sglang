@@ -137,6 +137,9 @@ class Mamba2StateShape:
     head_dim: int
     state_size: int
     conv_kernel: int
+    # Unsharded group sizes for conv state, matching mamba_v2_sharded_weight_loader ordering.
+    # e.g. for Mamba2: [B_size, x_size, C_size], for Qwen3.5 GDN: [K_dim, K_dim, V_dim]
+    conv_shard_groups: list[int] = field(default_factory=list)
 
     @staticmethod
     def create(
@@ -164,6 +167,9 @@ class Mamba2StateShape:
         # - they are typically small
         #   e.g., QWen3-Next: (32, 128, 128)
         temporal_state_shape = (divide(num_heads, tp_world_size), head_dim, state_size)
+        bc_size = n_groups * state_size
+        conv_shard_groups = [bc_size, intermediate_size, bc_size]
+
         return Mamba2StateShape(
             conv=[conv_state_shape],
             temporal=temporal_state_shape,
@@ -174,6 +180,7 @@ class Mamba2StateShape:
             head_dim=head_dim,
             state_size=state_size,
             conv_kernel=conv_kernel,
+            conv_shard_groups=conv_shard_groups,
         )
 
 
